@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Food Cost Calculator by KZ</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--text:#1f2937;--muted:#6b7280;--brand:#111827;--line:#e5e7eb;--green:#16a34a;--red:#dc2626;--blue:#2563eb;}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--text)}
+.header{background:var(--brand);color:white;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.header h1{margin:0;font-size:22px}.header span{font-size:13px;color:#d1d5db}
+.container{max-width:1200px;margin:20px auto;padding:0 14px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+h2{font-size:18px;margin:0 0 12px} label{font-size:13px;font-weight:700;display:block;margin:10px 0 6px} input,select,button,textarea{font:inherit} input,select,textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:10px;background:white} textarea{min-height:70px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.btn{border:0;border-radius:10px;padding:11px 14px;cursor:pointer;font-weight:700}.primary{background:var(--blue);color:white}.dark{background:var(--brand);color:white}.light{background:#e5e7eb}.green{background:var(--green);color:white}.red{background:var(--red);color:white}.btn:active{transform:scale(.99)}
+.small{font-size:12px;color:var(--muted)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.pillbox{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.pill{border:1px solid var(--line);background:#f9fafb;padding:9px 11px;border-radius:999px;cursor:pointer;font-size:13px}.pill:hover{background:#eef2ff;border-color:#93c5fd}.tablewrap{overflow:auto} table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px} th,td{border-bottom:1px solid var(--line);padding:9px;text-align:left;vertical-align:top} th{background:#f9fafb;font-weight:800}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.metric{background:#f9fafb;border:1px solid var(--line);border-radius:12px;padding:12px}.metric b{display:block;font-size:18px;margin-top:6px}.sequence{background:#f9fafb;border:1px solid var(--line);border-radius:12px;padding:12px;white-space:pre-wrap;line-height:1.6}.hide{display:none}.warn{color:#b45309}.ok{color:#15803d}.danger{color:#dc2626}@media(max-width:850px){.grid,.row,.row3,.summary{grid-template-columns:1fr!important}.header{align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="header" id="top"><div><h1>Food Cost Calculator</h1><span>Upload ingredients, build products, calculate food cost and save history</span></div><strong>by KZ</strong></div>
+<div class="container">
+  <div class="grid">
+    <section class="card">
+      <h2>1. Ingredient Database</h2>
+      <p class="small">Upload Excel/CSV with columns: Name, Price, PackQty, PackUnit. Example: Beef Patty 3.5, 120, 12, kg. Usage can be grams, pieces, ml, etc.</p>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+      <div class="actions"><button class="btn light" onclick="downloadTemplate()">Download Template</button><button class="btn red" onclick="clearIngredients()">Clear Ingredients</button></div>
+      <div class="row3">
+        <div><label>Name</label><input id="ingName" placeholder="American Cheese" /></div>
+        <div><label>Pack Price</label><input id="ingPrice" type="number" step="0.01" placeholder="45" /></div>
+        <div><label>Pack Qty</label><input id="ingPackQty" type="number" step="0.001" placeholder="2" /></div>
+      </div>
+      <div class="row">
+        <div><label>Pack Unit</label><select id="ingPackUnit"><option>kg</option><option>g</option><option>L</option><option>ml</option><option>piece</option><option>carton</option></select></div>
+        <div><label>Category</label><input id="ingCat" placeholder="Protein / Sauce / Packaging" /></div>
+      </div>
+      <div class="actions"><button class="btn green" onclick="addIngredientManual()">Add Ingredient</button></div>
+      <div class="tablewrap"><table id="ingredientsTable"><thead><tr><th>Name</th><th>Price</th><th>Pack Qty</th><th>Unit</th><th>Cost / Base</th><th></th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section class="card" id="calculator">
+      <h2>2. New Product Calculator</h2>
+      <div class="row">
+        <div><label>Project / Menu Name</label><input id="projectName" placeholder="Burger Launch / Store Trial" /></div>
+        <div><label>Product Name</label><input id="productName" placeholder="Double Cheeseburger" /></div>
+      </div>
+      <div class="row">
+        <div><label>Selling Price ex GST</label><input id="sellEx" type="number" step="0.01" placeholder="10.00" /></div>
+        <div><label>Target Food Cost %</label><input id="targetPct" type="number" step="0.1" placeholder="30" /></div>
+      </div>
+      <label>Select Ingredient</label>
+      <select id="ingredientSelect"></select>
+      <div class="row3">
+        <div><label>Usage Qty</label><input id="usageQty" type="number" step="0.001" placeholder="12" /></div>
+        <div><label>Usage Unit</label><select id="usageUnit"><option>g</option><option>kg</option><option>ml</option><option>L</option><option>piece</option><option>carton</option></select></div>
+        <div><label>Notes</label><input id="usageNote" placeholder="Heel / Crown / 2 slices" /></div>
+      </div>
+      <div class="row">
+        <div><label>Cost Type</label><select id="costType"><option value="auto">Auto from category</option><option value="food">Food Cost</option><option value="packaging">Packaging Cost</option></select></div>
+        <div><label>&nbsp;</label><button class="btn primary" onclick="addLine()">Add Component</button></div>
+      </div>
+      <div class="actions"><button class="btn light" onclick="clearCurrentProduct()">New Product</button><button class="btn dark" onclick="calculateProduct()">Calculate</button><button class="btn green" onclick="saveToHistory()">Save to History</button></div>
+      <p class="small">Quick ingredient buttons</p><div id="quickButtons" class="pillbox"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px" id="result">
+    <h2>3. Product Build and Result</h2>
+    <div class="tablewrap"><table id="buildTable"><thead><tr><th>#</th><th>Component</th><th>Type</th><th>Usage</th><th>Pack Logic</th><th>Cost</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="summary" style="grid-template-columns:repeat(6,1fr)">
+      <div class="metric">Food Cost <b id="foodCost">$0.00</b></div>
+      <div class="metric">Food Cost % <b id="foodPct">0%</b></div>
+      <div class="metric">Packaging <b id="packCostOut">$0.00</b></div>
+      <div class="metric">Packaging % <b id="packPct">0%</b></div>
+      <div class="metric">Total Cost <b id="totalCost">$0.00</b></div>
+      <div class="metric">Total Cost % <b id="totalPct">0%</b></div>
+    </div>
+    <div class="summary">
+      <div class="metric">Gross Profit <b id="grossProfit">$0.00</b></div>
+      <div class="metric">Status <b id="statusText">Ready</b></div>
+    </div>
+    <label>Product Sequence</label><div class="sequence" id="sequenceBox">No components added yet.</div>
+    <div class="actions"><button class="btn green" onclick="saveToHistory()">Save to Project History</button><button class="btn light" onclick="exportHistory()">Export History CSV</button><button class="btn red" onclick="clearHistory()">Clear History</button></div>
+  </section>
+
+  <section class="card" style="margin-top:16px" id="historySection">
+    <h2>4. Project History</h2>
+    <p class="small">Use Edit to recall any saved product, adjust it, then save again.</p>
+    <div class="tablewrap"><table id="historyTable"><thead><tr><th>Date</th><th>Project</th><th>Product</th><th>Food</th><th>Packaging</th><th>Total</th><th>Selling Price</th><th>Food %</th><th>Packaging %</th><th>Total %</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+  </section>
+  <div class="actions" style="justify-content:center;margin:18px 0 28px"><button class="btn dark" onclick="location.hash='top'">Back to Top</button><button class="btn primary" onclick="location.hash='calculator'">Go to Cost Calculator</button></div>
+</div>
+<script>
+let ingredients = JSON.parse(localStorage.getItem('ingredients_v1')||'[]');
+let build = [];
+let lastCalc = null;
+let editIndex = null;
+let history = JSON.parse(localStorage.getItem('history_v1')||'[]');
+function money(n){return '$'+(Number(n)||0).toFixed(2)}
+function pct(n){return ((Number(n)||0)*100).toFixed(1)+'%'}
+function baseUnit(unit){ if(unit==='kg')return 'g'; if(unit==='L')return 'ml'; return unit; }
+function factorToBase(qty,unit){ qty=Number(qty)||0; if(unit==='kg')return qty*1000; if(unit==='L')return qty*1000; return qty; }
+function canConvert(packUnit,useUnit){return baseUnit(packUnit)===baseUnit(useUnit)}
+function isPackagingCategory(cat){return String(cat||'').toLowerCase().includes('pack') || String(cat||'').toLowerCase().includes('box') || String(cat||'').toLowerCase().includes('bag')}
+function unitCost(ing){let baseQty=factorToBase(ing.packQty, ing.packUnit); return baseQty? Number(ing.price)/baseQty:0}
+function saveAll(){localStorage.setItem('ingredients_v1',JSON.stringify(ingredients));localStorage.setItem('history_v1',JSON.stringify(history));}
+function renderIngredients(){let tb=document.querySelector('#ingredientsTable tbody');tb.innerHTML='';ingredients.forEach((x,i)=>{tb.innerHTML+=`<tr><td>${x.name}<br><span class="small">${x.category||''}</span></td><td>${money(x.price)}</td><td>${x.packQty}</td><td>${x.packUnit}</td><td>${money(unitCost(x))} / ${baseUnit(x.packUnit)}</td><td><button class="btn red" onclick="ingredients.splice(${i},1);saveAll();renderAll()">Delete</button></td></tr>`});let sel=document.getElementById('ingredientSelect');sel.innerHTML=ingredients.map((x,i)=>`<option value="${i}">${x.name}</option>`).join('');document.getElementById('quickButtons').innerHTML=ingredients.slice(0,60).map((x,i)=>`<button class="pill" onclick="quickPick(${i})">${x.name}</button>`).join('')}
+function quickPick(i){document.getElementById('ingredientSelect').value=i;document.getElementById('usageQty').focus()}
+function addIngredientManual(){let name=ingName.value.trim(); if(!name)return alert('Enter ingredient name'); ingredients.push({name,price:+ingPrice.value||0,packQty:+ingPackQty.value||0,packUnit:ingPackUnit.value,category:ingCat.value.trim()}); ingName.value=ingPrice.value=ingPackQty.value=ingCat.value=''; saveAll(); renderAll();}
+function addLine(){let idx=+ingredientSelect.value; let ing=ingredients[idx]; if(!ing)return alert('Add ingredients first'); let qty=+usageQty.value; if(!qty)return alert('Enter usage quantity'); let useUnit=usageUnit.value; if(!canConvert(ing.packUnit,useUnit)) return alert('Unit mismatch. Pack unit is '+ing.packUnit+' but usage unit is '+useUnit); let useBase=factorToBase(qty,useUnit); let cost=useBase*unitCost(ing); let selectedType=costType.value; let type=selectedType==='auto'?(isPackagingCategory(ing.category)?'packaging':'food'):selectedType; build.push({name:ing.name,qty,useUnit,note:usageNote.value.trim(),packPrice:ing.price,packQty:ing.packQty,packUnit:ing.packUnit,category:ing.category||'',type,cost}); usageQty.value=''; usageNote.value=''; renderBuild(); calculateProduct(false);}
+function renderBuild(){let tb=document.querySelector('#buildTable tbody');tb.innerHTML='';build.forEach((x,i)=>{tb.innerHTML+=`<tr><td>${i+1}</td><td>${x.name}<br><span class="small">${x.note||''}</span></td><td>${x.type==='packaging'?'Packaging':'Food'}</td><td>${x.qty} ${x.useUnit}</td><td>${money(x.packPrice)} / ${x.packQty} ${x.packUnit}</td><td>${money(x.cost)}</td><td><button class="btn red" onclick="build.splice(${i},1);renderBuild();calculateProduct(false)">Remove</button></td></tr>`});document.getElementById('sequenceBox').textContent=build.length?build.map((x,i)=>`${i+1}. ${x.name}${x.note?' - '+x.note:''} | ${x.type==='packaging'?'Packaging':'Food'} | ${x.qty} ${x.useUnit} | ${money(x.cost)}`).join('\n'):'No components added yet.'}
+function calculateProduct(showAlert=true){let food=build.filter(x=>x.type!=='packaging').reduce((s,x)=>s+x.cost,0);let pack=build.filter(x=>x.type==='packaging').reduce((s,x)=>s+x.cost,0);let total=food+pack;let sell=+sellEx.value||0;let foodPercent=sell?food/sell:0;let packPercent=sell?pack/sell:0;let totalPercent=sell?total/sell:0;let gp=sell-total;foodCost.textContent=money(food);packCostOut.textContent=money(pack);totalCost.textContent=money(total);foodPct.textContent=pct(foodPercent);packPct.textContent=pct(packPercent);totalPct.textContent=pct(totalPercent);grossProfit.textContent=money(gp);let target=(+targetPct.value||0)/100;statusText.textContent=target?(foodPercent<=target?'On Target':'Above Target'):'Calculated';statusText.className=target?(foodPercent<=target?'ok':'danger'):'';lastCalc={food,pack,total,sell,foodPercent,packPercent,totalPercent,gp,sequence:sequenceBox.textContent,build:JSON.parse(JSON.stringify(build)),targetPct:+targetPct.value||0}; if(showAlert) alert('Calculation completed');}
+function saveToHistory(){calculateProduct(false);let product=productName.value.trim(); if(!product)return alert('Enter product name'); let item={date:new Date().toLocaleString(),project:projectName.value.trim(),product,...lastCalc}; if(editIndex!==null){history[editIndex]=item; editIndex=null;} else {history.unshift(item);} saveAll(); renderHistory(); alert('Saved to Project History'); location.hash='historySection';}
+function renderHistory(){let tb=document.querySelector('#historyTable tbody');tb.innerHTML='';history.forEach((h,i)=>{tb.innerHTML+=`<tr><td>${h.date}</td><td>${h.project||''}</td><td>${h.product}</td><td>${money(h.food)}</td><td>${money(h.pack)}</td><td>${money(h.total)}</td><td>${money(h.sell)}</td><td>${pct(h.foodPercent)}</td><td>${pct(h.packPercent)}</td><td>${pct(h.totalPercent)}</td><td><button class="btn light" onclick="editHistory(${i})">Edit</button> <button class="btn red" onclick="deleteHistory(${i})">Delete</button></td></tr>`})}
+function editHistory(i){let h=history[i]; if(!h)return; projectName.value=h.project||''; productName.value=h.product||''; sellEx.value=h.sell||''; targetPct.value=h.targetPct||''; build=JSON.parse(JSON.stringify(h.build||[])); editIndex=i; renderBuild(); calculateProduct(false); location.hash='calculator';}
+function deleteHistory(i){if(confirm('Delete this saved product?')){history.splice(i,1);saveAll();renderHistory();}}
+function clearCurrentProduct(){build=[];lastCalc=null;productName.value='';sellEx.value='';targetPct.value='';renderBuild();calculateProduct(false)}
+function clearIngredients(){if(confirm('Clear all ingredients?')){ingredients=[];saveAll();renderAll()}}
+function clearHistory(){if(confirm('Clear history?')){history=[];saveAll();renderHistory()}}
+function exportHistory(){let rows=[['Date','Project','Product','Food Cost','Packaging','Total Cost','Selling Price','Food %','Total %','Sequence'],...history.map(h=>[h.date,h.project,h.product,h.food,h.pack,h.total,h.sell,(h.foodPercent*100).toFixed(1),(h.totalPercent*100).toFixed(1),h.sequence])];let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='food_cost_history.csv';a.click()}
+function downloadTemplate(){let csv='Name,Price,PackQty,PackUnit,Category\nBurger 3.5oz,120,12,kg,Protein\nAmerican Cheese Slice,35,96,piece,Cheese\nBurger Bun Heel and Crown,28,48,piece,Bread\nLettuce,42,5,kg,Vegetable\nTomato,38,5,kg,Vegetable\nBurger Box,45,250,piece,Packaging\nPaper Bag,25,500,piece,Packaging\n';let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='ingredient_template.csv';a.click()}
+document.getElementById('fileInput').addEventListener('change',e=>{let file=e.target.files[0]; if(!file)return; let reader=new FileReader(); reader.onload=ev=>{let data=new Uint8Array(ev.target.result);let wb=XLSX.read(data,{type:'array'});let ws=wb.Sheets[wb.SheetNames[0]];let json=XLSX.utils.sheet_to_json(ws,{defval:''});let mapped=json.map(r=>({name:String(r.Name||r.name||r.Product||r.product||'').trim(),price:+(r.Price||r.price||0),packQty:+(r.PackQty||r.packQty||r.Quantity||r.quantity||0),packUnit:String(r.PackUnit||r.packUnit||r.Unit||r.unit||'kg').trim(),category:String(r.Category||r.category||'').trim()})).filter(x=>x.name);ingredients=ingredients.concat(mapped);saveAll();renderAll();alert(mapped.length+' ingredients uploaded')}; reader.readAsArrayBuffer(file);});
+function renderAll(){renderIngredients();renderBuild();renderHistory()} renderAll();
+</script>
+</body>
+</html>
